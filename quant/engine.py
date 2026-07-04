@@ -182,7 +182,7 @@ def atr_20(
     tr3 = (low - prev_close).abs().values
 
     tr_values = np.maximum(tr1, np.maximum(tr2, tr3))
-    tr = pd.DataFrame(tr_values, index=close.index, columns=close.columns)
+    tr = pd.Series(tr_values, index=close.index, name="tr")
 
     return tr.rolling(window=window, min_periods=window).mean()
 

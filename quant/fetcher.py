@@ -176,14 +176,9 @@ def fetch_yfinance(
         sym = symbols[0]
         raw.columns = pd.MultiIndex.from_product([[sym], raw.columns])
 
-    # 标准化字段名
-    rename = {"Adj Close": "Close"}  # 用 adjusted close 作为 Close
-    raw = raw.rename(columns=rename)
+    # 标准化字段名：去掉 Adj Close（只用 Close）, 保留 5 个标准字段
     keep = ["Open", "High", "Low", "Close", "Volume"]
-    raw = raw.xs(slice(None), axis=1, level=1) if False else raw  # noop placeholder
-    # 选取需要的字段
-    fields_present = [f for f in keep if (raw.columns.get_level_values(1) == f).any()]
-    raw = raw.loc[:, (slice(None), fields_present)]
+    raw = raw.loc[:, (slice(None), keep)]
 
     raw = raw.dropna(how="all").sort_index(axis=1)
     return raw

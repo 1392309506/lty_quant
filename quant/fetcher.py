@@ -5,90 +5,35 @@ Fetcher — 数据下载与管理模块
   - yfinance (默认): 数据完整、历史长，但在中国需代理（v2rayN/clash）
   - alpha_vantage:   免费层仅 100 天 compact 数据，无需代理，作为兜底
 
-.env 配置示例:
-  DATA_BACKEND=yfinance
-  HTTP_PROXY=http://127.0.0.1:10808      # v2rayN 默认 HTTP 端口
-  HTTPS_PROXY=http://127.0.0.1:10808
-  ALPHA_VANTAGE_KEY=你的KEY               # AV 兜底用
-
 输出：MultiIndex DataFrame (列: ticker × OHLCV)，缓存到 data/market_data.parquet
 """
 
-import os
 import json
 import time
 import logging
-from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List, Dict
 
 import pandas as pd
 import numpy as np
 import requests
 
+from quant.config import (
+    DATA_DIR,
+    CACHE_FILE,
+    TRADE_UNIVERSE,
+    STALE_DAYS,
+    YF_BATCH_SIZE,
+    YF_PAUSE,
+    AV_CALL_INTERVAL,
+    get_backend,
+    get_proxies,
+    get_av_key,
+)
+
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# 配置
-# ---------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-DATA_DIR = PROJECT_ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
-
-CACHE_FILE = DATA_DIR / "market_data.parquet"
-
-# 交易标的池
-TRADE_UNIVERSE = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "META",
-    "NVDA", "TSLA", "JPM", "V",
-    "JNJ", "WMT", "PG", "MA", "UNH",
-    "HD", "DIS", "NFLX", "ADBE", "CRM",
-    "BAC", "KO", "COST", "PEP", "CVX",
-    "GLD", "QQQ",
-]
-
-STALE_DAYS = 7  # 缓存多少天后视为过期
-
-# Alpha Vantage 免费限制：5 次/分钟，500 次/天
-AV_CALL_INTERVAL = 12.0
-
-# yfinance 批量下载间隔（避免限流）
-YF_BATCH_SIZE = 8
-YF_PAUSE = 0.5
-
-
-# ---------------------------------------------------------------------------
-# .env 读取
-# ---------------------------------------------------------------------------
-
-def _load_env() -> Dict[str, str]:
-    """从 .env 文件读取配置（不依赖 python-dotenv，保持零额外依赖）"""
-    env: Dict[str, str] = {}
-    env_path = PROJECT_ROOT / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").strip().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            env[k.strip()] = v.strip().strip("\"'")
-    # 环境变量优先级高于 .env
-    for k in ["DATA_BACKEND", "HTTP_PROXY", "HTTPS_PROXY", "ALPHA_VANTAGE_KEY"]:
-        if k in os.environ:
-            env[k] = os.environ[k]
-    return env
-
-
-def _get_backend() -> str:
-    return _load_env().get("DATA_BACKEND", "yfinance").lower()
-
-
-def _get_proxies() -> Optional[Dict[str, str]]:
-    env = _load_env()
-    proxy = env.get("HTTPS_PROXY") or env.get("HTTP_PROXY")
-    if not proxy:
-        return None
-    return {"http": env.get("HTTP_PROXY", proxy), "https": proxy}
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +47,7 @@ def _make_yf_session() -> requests.Session:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     })
-    proxies = _get_proxies()
+    proxies = get_proxies()
     if proxies:
         session.proxies.update(proxies)
         logger.info(f"🌐 yfinance 使用代理: {proxies['https']}")
@@ -189,14 +134,13 @@ def fetch_yfinance(
 # ---------------------------------------------------------------------------
 
 def _av_request(params: Dict) -> Optional[dict]:
-    env = _load_env()
-    key = env.get("ALPHA_VANTAGE_KEY")
+    key = get_av_key()
     if not key:
         logger.error("未配置 ALPHA_VANTAGE_KEY，无法使用 Alpha Vantage 兜底")
         return None
 
     params["apikey"] = key
-    proxies = _get_proxies()
+    proxies = get_proxies()
 
     for attempt in range(3):
         try:
@@ -313,7 +257,7 @@ def fetch_all_data(
     if max_symbols:
         symbols = symbols[:max_symbols]
 
-    backend = (backend or _get_backend()).lower()
+    backend = (backend or get_backend()).lower()
     logger.info(f"🌐 数据后端: {backend}，标的数: {len(symbols)}")
 
     if backend == "yfinance":

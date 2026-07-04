@@ -74,5 +74,6 @@ logs/
 .ruff_cache/
 .pyre/
 
-# === 调研笔记 ===
-notes/
+# === AI 治理文件（仅本地使用，不入库）===
+CONSTITUTION.md
+CLAUDE.md

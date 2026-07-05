@@ -34,12 +34,14 @@ from src.backtest.config import (
     TOP_K,
     MIN_HOLD,
     MAX_HOLD,
-    ONE_WAY_FEE,
+    SLIPPAGE,
+    TOTAL_COST_PER_SIDE,
     INITIAL_CASH,
     MAX_REBALANCES_PER_WEEK,
     USE_REGIME_FILTER,
     REGIME_MA_WINDOW,
     MIN_PRED,
+    POSITION_SCALE,
 )
 
 
@@ -128,16 +130,19 @@ def main():
         "min_hold": MIN_HOLD,
         "max_hold": MAX_HOLD,
         "max_rebalances_per_week": MAX_REBALANCES_PER_WEEK,
-        "one_way_fee": ONE_WAY_FEE,
+        "one_way_fee": TOTAL_COST_PER_SIDE,
+        "slippage": SLIPPAGE,
         "init_cash": INITIAL_CASH,
-        "use_regime_filter": not args["no_regime"],
+        "position_scale": POSITION_SCALE,
+        "use_regime_filter": not args["no_regime"] if args["no_regime"] else USE_REGIME_FILTER,
         "regime_ma_window": REGIME_MA_WINDOW,
     }
 
     logger.info(
         f"📋 回测配置: top_k={bt_config['top_k']}, "
         f"hold=[{bt_config['min_hold']},{bt_config['max_hold']}], "
-        f"fee={bt_config['one_way_fee']:.1%}, "
+        f"scale={bt_config['position_scale']}x, "
+        f"cost={bt_config['one_way_fee']:.2%}, "
         f"regime_filter={bt_config['use_regime_filter']}"
     )
 

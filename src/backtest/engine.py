@@ -31,12 +31,28 @@ def run_backtest(
     entries: pd.DataFrame,
     exits: pd.DataFrame,
     init_cash: float = 100_000,
-    fees: float = 0.001,
+    fees: float = 0.0017,
+    slippage: float = 0.0005,
     top_k: int = 5,
+    position_scale: float = 1.0,
+    n_trading_days: int = 0,
+    oos_start: str = "",
+    oos_end: str = "",
     name: str = "quant_strategy",
 ) -> dict:
     """
     使用 vectorbt 的 Portfolio.from_signals 运行回测。
+
+    成本模型: 佣金(fees) + 滑点(slippage) + 点差(已含在 fees 中)。
+
+    Parameters
+    ----------
+    position_scale : float
+        头寸规模倍数。1.0 = 等权 (1/top_k)，3.0 = 3 倍杠杆。
+    n_trading_days : int
+        实际交易天数（年化用）。0 = 自动从 entries 推算。
+    oos_start, oos_end : str
+        OOS 期起止日期，用于正确计算年化波动率。
     """
     try:
         import vectorbt as vbt
@@ -44,14 +60,15 @@ def run_backtest(
         logger.error("❌ vectorbt 未安装，请运行: pip install vectorbt")
         raise
 
+    total_cost = fees + slippage
     logger.info(
         f"📊 运行回测: {len(entries)} 天, {entries.shape[1]} 个标的, "
-        f"费用={fees:.1%}, 资金={init_cash:,.0f}"
+        f"费用={total_cost:.2%}, 资金={init_cash:,.0f}"
     )
 
     if top_k is None or top_k <= 0:
         top_k = 5
-    position_size = 1.0 / top_k
+    position_size = 1.0 / top_k * position_scale
 
     pf = vbt.Portfolio.from_signals(
         open_price,
@@ -62,12 +79,17 @@ def run_backtest(
         init_cash=init_cash,
         size=position_size,
         cash_sharing=True,
-        fees=fees,
+        fees=total_cost,
         freq="D",
-        slippage=0.0,
+        slippage=0.0,  # vectorbt 的 slippage 模型与我们的手续费有重叠，用 fees 统一处理
     )
 
-    metrics = _compute_portfolio_metrics(pf)
+    # 实际交易天数：从 entries 中至少有 1 笔入场的第一天到最后一天
+    if n_trading_days <= 0:
+        trade_dates = entries.index[(entries.sum(axis=1) > 0)]
+        n_trading_days = len(trade_dates) if len(trade_dates) > 0 else len(entries)
+
+    metrics = _compute_portfolio_metrics(pf, n_trading_days=n_trading_days)
     metrics["n_trades"] = int(metrics.get("num_trades", 0))
     metrics["total_return"] = round(float(metrics.get("total_return", 0)), 6)
     metrics["total_fees_paid"] = round(float(metrics.get("total_fees_paid", 0)), 2)
@@ -87,107 +109,96 @@ def run_backtest(
     }
 
 
-def _compute_portfolio_metrics(pf) -> Dict:
-    """从 vectorbt Portfolio 提取标准回测指标。"""
+def _compute_portfolio_metrics(pf, n_trading_days: int = 0) -> Dict:
+    """从 vectorbt Portfolio 提取标准回测指标。
+
+    Parameters
+    ----------
+    n_trading_days : int
+        实际交易天数（OOS 期，用于年化）。0 = 用整个 returns 序列长度。
+    """
+    # --- 获取组合价值与日收益 ---
     try:
         portfolio_value = pf.value()
     except Exception:
         portfolio_value = None
 
-    if portfolio_value is not None and len(portfolio_value) > 1:
-        if isinstance(portfolio_value, pd.DataFrame):
-            portfolio_value = portfolio_value.sum(axis=1)
+    if portfolio_value is None or len(portfolio_value) <= 1:
+        return _empty_metrics()
 
-        total_return = float((portfolio_value.iloc[-1] / portfolio_value.iloc[0]) - 1)
-        total_return_pct = total_return * 100
+    if isinstance(portfolio_value, pd.DataFrame):
+        portfolio_value = portfolio_value.sum(axis=1)
 
-        if isinstance(portfolio_value, pd.DataFrame):
-            portfolio_value = portfolio_value.iloc[:, 0]
-        returns = portfolio_value.pct_change().dropna()
+    total_return = float((portfolio_value.iloc[-1] / portfolio_value.iloc[0]) - 1)
+    if isinstance(portfolio_value, pd.DataFrame):
+        portfolio_value = portfolio_value.iloc[:, 0]
+    all_returns = portfolio_value.pct_change().dropna()
 
-        n_days = len(returns)
-        ann_factor = 252 / n_days if n_days > 0 else 0
-        annualized_return = total_return * ann_factor if ann_factor > 0 else 0
-        annualized_vol = float(returns.std() * (252 ** 0.5)) if n_days > 0 else 0
-        sharpe = (annualized_return / annualized_vol) if annualized_vol > 0 else 0
+    if len(all_returns) == 0:
+        return _empty_metrics()
 
-        cummax = portfolio_value.cummax()
-        drawdown = float((portfolio_value / cummax - 1).min())
-        max_drawdown = drawdown
-        max_drawdown_pct = drawdown * 100
+    # --- 核心指标 ---
+    n_days = n_trading_days if n_trading_days > 0 else len(all_returns)
+    ann_factor = 252 / n_days if n_days > 0 else 0
+    annualized_return = total_return * ann_factor if ann_factor > 0 else 0
 
-        try:
-            trades = pf.trades
-            # vectorbt ExitTrades (新版本): 直接调用内置方法
-            if hasattr(trades, "count") and not isinstance(trades, pd.DataFrame):
-                num_trades = trades.count()
-                if num_trades > 0:
-                    win_rate = float(trades.win_rate())
-                    profit_factor = float(trades.profit_factor()) if float(trades.profit_factor()) != float("inf") else 0
-                else:
-                    win_rate = 0
-                    profit_factor = 0
-            elif isinstance(trades, dict):
-                # 多标的 (旧版 dict of DataFrame)
-                all_trades = pd.concat(trades.values(), ignore_index=True)
-                num_trades = len(all_trades)
-                if num_trades > 0:
-                    pnl_col = [c for c in all_trades.columns if "pnl" in c.lower()][0]
-                    win_rate = (all_trades[pnl_col] > 0).sum() / num_trades
-                    profits = all_trades[all_trades[pnl_col] > 0][pnl_col].sum()
-                    losses = abs(all_trades[all_trades[pnl_col] < 0][pnl_col].sum())
-                    profit_factor = profits / losses if losses > 0 else float("inf")
-                else:
-                    win_rate = 0
-                    profit_factor = 0
-            else:
-                # DataFrame (旧版单标的)
-                num_trades = len(trades)
-                if num_trades > 0:
-                    win_rate = (trades["pnl"] > 0).sum() / num_trades
-                    profit_factor = (
-                        trades[trades["pnl"] > 0]["pnl"].sum()
-                        / abs(trades[trades["pnl"] < 0]["pnl"].sum())
-                    ) if (trades["pnl"] < 0).sum() > 0 else float("inf")
-                else:
-                    win_rate = 0
-                    profit_factor = 0
-        except Exception:
-            num_trades = 0
-            win_rate = 0
-            profit_factor = 0
+    # 年化波动率：只用有交易活动的期间（排除 0 收益的平坦段）
+    active_returns = all_returns[all_returns.abs() > 1e-10]
+    if len(active_returns) < 20:
+        active_returns = all_returns  # fallback
+    annualized_vol = float(active_returns.std() * (252 ** 0.5))
+    sharpe = (annualized_return / annualized_vol) if annualized_vol > 1e-10 else 0
 
-        try:
-            fees = pf.fees()
-            if hasattr(fees, "sum"):
-                total_fees = float(fees.sum())
-            else:
-                total_fees = 0
-        except Exception:
-            total_fees = 0
+    cummax = portfolio_value.cummax()
+    max_drawdown = float((portfolio_value / cummax - 1).min())
+    max_drawdown_pct = max_drawdown * 100
 
-        downside = returns[returns < 0]
-        downside_vol = downside.std() * (252 ** 0.5) if len(downside) > 0 else 0
-        sortino = (annualized_return / downside_vol) if downside_vol > 0 else 0
+    # --- 交易统计 ---
+    num_trades = 0
+    win_rate = 0.0
+    profit_factor = 0.0
+    try:
+        trades = pf.trades
+        if hasattr(trades, "count") and not isinstance(trades, pd.DataFrame):
+            num_trades = trades.count()
+            if num_trades > 0:
+                win_rate = float(trades.win_rate())
+                pf_val = float(trades.profit_factor())
+                profit_factor = pf_val if pf_val != float("inf") else 0
+        elif isinstance(trades, dict):
+            all_trades = pd.concat(trades.values(), ignore_index=True)
+            num_trades = len(all_trades)
+            if num_trades > 0:
+                pnl_col = [c for c in all_trades.columns if "pnl" in c.lower()][0]
+                win_rate = (all_trades[pnl_col] > 0).sum() / num_trades
+                profits = all_trades[all_trades[pnl_col] > 0][pnl_col].sum()
+                losses = abs(all_trades[all_trades[pnl_col] < 0][pnl_col].sum())
+                profit_factor = profits / losses if losses > 0 else 0
+        else:
+            num_trades = len(trades)
+            if num_trades > 0:
+                win_rate = (trades["pnl"] > 0).sum() / num_trades
+                profit_factor = (trades[trades["pnl"] > 0]["pnl"].sum()
+                    / abs(trades[trades["pnl"] < 0]["pnl"].sum())
+                ) if (trades["pnl"] < 0).sum() > 0 else 0
+    except Exception:
+        pass
 
-    else:
-        total_return = 0
-        total_return_pct = 0
-        annualized_return = 0
-        annualized_vol = 0
-        sharpe = 0
-        sortino = 0
-        max_drawdown = 0
-        max_drawdown_pct = 0
-        win_rate = 0
-        profit_factor = 0
-        num_trades = 0
-        total_fees = 0
-        returns = pd.Series(dtype=float)
+    total_fees = 0.0
+    try:
+        fees = pf.fees()
+        if hasattr(fees, "sum"):
+            total_fees = float(fees.sum())
+    except Exception:
+        pass
+
+    downside = active_returns[active_returns < 0]
+    downside_vol = downside.std() * (252 ** 0.5) if len(downside) > 0 else 0
+    sortino = (annualized_return / downside_vol) if downside_vol > 1e-10 else 0
 
     metrics = {
         "total_return": total_return,
-        "total_return_pct": round(total_return_pct, 2),
+        "total_return_pct": round(total_return * 100, 2),
         "annualized_return": annualized_return,
         "annualized_volatility": annualized_vol,
         "sharpe_ratio": round(sharpe, 2),
@@ -200,7 +211,20 @@ def _compute_portfolio_metrics(pf) -> Dict:
         "total_fees_paid": round(total_fees, 2),
     }
 
-    return metrics | {"returns": returns}
+    return metrics | {"returns": all_returns}
+
+
+def _empty_metrics() -> Dict:
+    """返回空指标字典（数据不足时使用）。"""
+    return {
+        "total_return": 0, "total_return_pct": 0,
+        "annualized_return": 0, "annualized_volatility": 0,
+        "sharpe_ratio": 0, "sortino_ratio": 0,
+        "max_drawdown": 0, "max_drawdown_pct": 0,
+        "win_rate": 0, "profit_factor": 0,
+        "num_trades": 0, "total_fees_paid": 0,
+        "returns": pd.Series(dtype=float),
+    }
 
 
 def run_full_backtest(
@@ -256,7 +280,10 @@ def run_full_backtest(
         exits=exits,
         init_cash=bt_config.get("init_cash", 100_000),
         fees=bt_config.get("one_way_fee", 0.001),
+        slippage=bt_config.get("slippage", 0.0005),
         top_k=bt_config.get("top_k", 5),
+        position_scale=bt_config.get("position_scale", 1.0),
+        n_trading_days=len(open_price.loc[bt_start:bt_end]),
     )
 
     result["entries"] = entries
@@ -265,5 +292,9 @@ def run_full_backtest(
         "start": str(bt_start.date()),
         "end": str(bt_end.date()),
     }
+
+    # 保存 SPY 收盘价用于基准对比
+    if spy_close is not None:
+        result["spy_close"] = spy_close
 
     return result

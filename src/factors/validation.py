@@ -19,6 +19,8 @@ RANGES = {
     "VOL_MA_RATIO": (0, 10),
     "ATR_20_NORM": (0, 0.2),
     "VOLATILITY_20": (0, 0.1),
+    "BB_WIDTH": (0, 1),
+    "HIGH_LOW_RATIO": (0, 0.3),
 }
 
 

@@ -10,6 +10,7 @@ import pandas as pd
 from src.factors.momentum import momo_20, momo_60, mom_ratio
 from src.factors.mean_reversion import rsi_14, bb_position, vol_ma_ratio
 from src.factors.volatility import atr_20, volatility_20
+from src.factors.new_factors import bb_width, high_low_ratio
 from src.factors.validation import validate_factors
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,8 @@ FACTOR_NAMES = [
     "VOL_MA_RATIO",
     "ATR_20_NORM",
     "VOLATILITY_20",
+    "BB_WIDTH",
+    "HIGH_LOW_RATIO",
 ]
 
 
@@ -97,6 +100,8 @@ def compute_all_factors(
         f["VOL_MA_RATIO"] = vol_ma_ratio(tk_volume)
         f["ATR_20_NORM"] = atr_20(tk_high, tk_low, tk_close) / tk_close
         f["VOLATILITY_20"] = volatility_20(tk_close)
+        f["BB_WIDTH"] = bb_width(tk_close)
+        f["HIGH_LOW_RATIO"] = high_low_ratio(tk_high, tk_low, tk_close)
 
         f.columns = [f"{ticker}|{col}" for col in f.columns]
         factors[ticker] = f

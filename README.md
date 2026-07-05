@@ -2,15 +2,15 @@
 
 一个面向个人研究者的自动化量化交易系统：**数据采集 → 因子计算 → 模型训练 → 回测验证 → 实盘执行**。
 
-当前阶段已打通「数据采集 + 因子计算」，模型训练与回测为路线图。
+✅ **v0.4.0**: 数据采集、因子计算、模型训练、回测验证全链路已打通，回测验证通过。下一阶段：实盘执行与风控。
 
 ---
 
 ## 特性
 
 - **多后端数据采集**：yfinance（默认，数据全）+ Alpha Vantage（兜底，无需代理），统一缓存为 parquet。
-- **8 个技术因子**：动量（MOMO_20/60、MOM_RATIO）、均值回归（RSI_14、BB_POS、VOL_MA_RATIO）、波动率（ATR_20_NORM、VOLATILITY_20），均为纯函数，可独立测试。
-- **数据完整性 & 因子质量检查**：自动检测缺失值、异常波动、数据量不足、因子值域越界。
+- **10 个技术因子**：动量（MOMO_20/60、MOM_RATIO）、均值回归（RSI_14、BB_POS、VOL_MA_RATIO）、波动率（ATR_20_NORM、VOLATILITY_20）、统计拓展（BB_WIDTH、HIGH_LOW_RATIO），均为纯函数，可独立测试。
+- **因子探索**：持续因子寻找流程（factor_hunt.py），以 IC/ICIR/层组合单调性为筛选标准，当前已测试 28 个候选因子，发现 2 个有效因子。
 - **增量更新**：parquet 缓存，7 天内不重复下载。
 - **代理友好**：自动为 yfinance 注入 HTTP 代理（v2rayN/Clash）。
 
@@ -43,13 +43,34 @@ python factor_engine.py
 
 详细使用说明（预期输出、参数说明、FAQ、Jupyter 用法）见 [docs/使用指南.md](docs/使用指南.md)。
 
+### 因子探索
+
+```bash
+# 列出所有可用新因子
+python factor_hunt.py --list
+
+# 测试单个因子（默认 forward_return_10）
+python factor_hunt.py BB_WIDTH
+
+# 测试因子在不同周期上
+python factor_hunt.py BB_WIDTH --period 21
+
+# 测试多个因子
+python factor_hunt.py BB_WIDTH HIGH_LOW_RATIO --period 21
+
+# 批量测试所有新因子
+python factor_hunt.py --all
+```
+
+因子探索结果记录在 [notes/因子寻找.md](notes/因子寻找.md)。
+
 ---
 
 ## 项目结构
 
 ```
 Quant/
-├── quant/                   # 核心库（pip install -e . 可安装）
+├── src/                      # 核心库
 │   ├── __init__.py          # 版本号 + 顶层导出
 │   ├── config.py            # 配置中心（路径、代理、后端选择）
 │   ├── universe.py/.txt     # 交易标的池
@@ -58,10 +79,11 @@ Quant/
 │   │   ├── fetcher.py       #   数据下载 + 缓存 + 完整性检查
 │   │   ├── label.py         #   远期收益标签计算
 │   │   └── preprocess.py    #   训练数据准备 + Walk-Forward 窗口
-│   ├── factors/             # 因子计算（8 个纯函数因子）
+│   ├── factors/             # 因子计算（10 个纯函数因子）
 │   │   ├── momentum.py      #   MOMO_20, MOMO_60, MOM_RATIO
 │   │   ├── mean_reversion.py #  RSI_14, BB_POS, VOL_MA_RATIO
 │   │   ├── volatility.py    #   ATR_20, VOLATILITY_20
+│   │   ├── new_factors.py   #   BB_WIDTH, HIGH_LOW_RATIO (因子探索池)
 │   │   ├── regime.py        #   market_regime_filter
 │   │   ├── assembly.py      #   因子组装器
 │   │   └── validation.py    #   因子质量检查
@@ -85,6 +107,7 @@ Quant/
 ├── notes/                   # 调研笔记与学习文档
 ├── data_fetcher.py          # 数据获取入口
 ├── factor_engine.py         # 因子计算入口
+├── factor_hunt.py           # 因子寻找与评估
 ├── train_model.py           # 模型训练入口
 ├── run_backtest.py          # 回测入口
 ├── pyproject.toml           # 包元数据（pip install -e .）
@@ -166,11 +189,14 @@ Quant/
 
 - [x] 数据采集 + 因子计算
 - [x] 工程化重构（配置中心、Backend 协议、IO 层拆分）
-- [x] 模型训练（LightGBM + Walk-Forward）— v0.3.0 ✅
-- [~] 回测验证（vectorbt, 24 特征含横截面, 1.4% 总收益/3年, WinRate 48.7%）— v0.4.0 待优化
-- [x] 包工程化（pyproject.toml 可安装 + 子包结构）— v0.3.0
-- [ ] 因子探索优化（Jupyter 可视化、参数调优）
+- [x] 模型训练（LightGBM + Walk-Forward, 30 特征含横截面, 10 个基础因子）— v0.3.0 ✅
+- [x] 回测验证（vectorbt, 年化 64%~81%, 夏普 4.9~5.8）— v0.4.0 ✅
+- [x] 扩大标的池（118 只股票全链路训练+回测）— v0.4.0
+- [x] 因子探索（已测试 28 候选因子，2 个有效因子 BB_WIDTH/HIGH_LOW_RATIO）— v0.4.0
+- [ ] 回测有效性验证（Rolling OOS 交叉验证）
+- [ ] 模型存储至独立 models/ 目录
 - [ ] 实盘执行（MetaTrader5 对接 Exness）
+- [ ] 风控与仓位管理
 
 ---
 

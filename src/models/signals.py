@@ -24,9 +24,17 @@ def generate_rebalance_calendar(
     """
     生成调仓日期日历。
 
-    策略：每周最多 2 次调仓，优先选择周一和周四。
+    根据 max_per_week 决定频率:
+    - 1-2: 周一和周四
+    - 3: 周一、三、五
+    - 5: 每个交易日
     """
-    dates = pd.bdate_range(start_date, end_date, freq="C", weekmask="Mon Thu")
+    if max_per_week >= 5:
+        dates = pd.bdate_range(start_date, end_date, freq="C", weekmask="Mon Tue Wed Thu Fri")
+    elif max_per_week >= 3:
+        dates = pd.bdate_range(start_date, end_date, freq="C", weekmask="Mon Wed Fri")
+    else:
+        dates = pd.bdate_range(start_date, end_date, freq="C", weekmask="Mon Thu")
     return dates
 
 

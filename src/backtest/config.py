@@ -3,18 +3,22 @@
 """
 
 # ---- 信号生成 ----
-TOP_K = 5                     # 每个调仓日最多买入数
-MIN_PRED = 0.0                # 最小预测收益（0 = 仅正预测）
-MIN_HOLD = 5                  # 最短持仓天数
-MAX_HOLD = 30                 # 最长持仓天数（强制平仓）
-MAX_REBALANCES_PER_WEEK = 2   # 每周最大调仓次数
+TOP_K = 2                     # 每个调仓日最多买入数
+MIN_PRED = -999.0             # 最小预测收益（负值 = 不限制，永远选 top_k）
+MIN_HOLD = 2                  # 最短持仓天数
+MAX_HOLD = 30                 # 最长持仓天数
+MAX_REBALANCES_PER_WEEK = 5   # 每周最大调仓次数（每天可调仓）
 
-# ---- 成本 ----
-ONE_WAY_FEE = 0.001           # 单边交易成本（含滑点）
+# ---- 成本（真实模拟） ----
+ONE_WAY_FEE = 0.001           # 单边交易佣金（0.1%）
+SLIPPAGE = 0.0005             # 滑点（0.05%，美国大盘股）
+SPREAD_ESTIMATE = 0.0002      # 点差（0.02%，美国大盘股平均）
+TOTAL_COST_PER_SIDE = ONE_WAY_FEE + SLIPPAGE + SPREAD_ESTIMATE  # 0.17%
 
 # ---- 投资组合 ----
 INITIAL_CASH = 100_000        # 初始资金
+POSITION_SCALE = 50.0         # 杠杆扫描
 
-# ---- 市场状态过滤器 ----
-USE_REGIME_FILTER = True      # 是否使用 SPY > MA200 过滤器
+# ---- 市场状态过滤器（默认关闭，放开仓位限制） ----
+USE_REGIME_FILTER = False     # 关闭 SPY > MA200 过滤器
 REGIME_MA_WINDOW = 200        # 均线窗口

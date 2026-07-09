@@ -145,8 +145,29 @@ class Broker:
         return pd.DataFrame(rows)
 
     # ------------------------------------------------------------------
-    # 模拟模式下的辅助方法（实盘模式由 OrderManager 通过 MT5 API 下单）
+    # 模拟模式下的辅助方法
     # ------------------------------------------------------------------
+
+    def fill_order(self, symbol: str, side: str, volume: float,
+                   price: float) -> Dict:
+        """公共接口：模拟或实盘成交。
+
+        模拟模式下记录到 _sim_positions。
+        实盘模式下由 OrderManager 通过 MT5 API 直接下单。
+        """
+        if self.simulate:
+            return self._sim_fill_order(symbol, side, volume, price)
+        raise RuntimeError("实盘模式请通过 OrderManager.place_market() 使用 MT5 API 下单")
+
+    def close_position(self, ticket: int, price: float) -> Dict:
+        """公共接口：模拟或实盘平仓。
+
+        模拟模式下更新账户余额并移除持仓。
+        实盘模式下由 OrderManager 通过 MT5 API 直接平仓。
+        """
+        if self.simulate:
+            return self._sim_close_position(ticket, price)
+        raise RuntimeError("实盘模式请通过 OrderManager.close_position() 使用 MT5 API 平仓")
 
     def _sim_fill_order(self, symbol: str, side: str, volume: float,
                         price: float) -> Dict:
@@ -209,8 +230,17 @@ class Broker:
             self._sim_account["equity"] - self._sim_account["margin"]
         )
 
-    def get_symbol_price(self, symbol: str) -> float:
-        """获取某标的最新报价。"""
+    def get_symbol_price(self, symbol: str, side: str = "buy") -> float:
+        """获取某标的最新报价。
+
+        Parameters
+        ----------
+        symbol : str
+            标的 ticker。
+        side : str
+            交易方向，"buy"（默认）返回 ask 价，"sell" 返回 bid 价。
+            模拟模式下无 spread，buy/sell 返回相同值。
+        """
         if self.simulate:
             # 模拟模式应由调用方通过 update_sim_prices 注入价格
             for pos in self._sim_positions:
@@ -221,4 +251,7 @@ class Broker:
         tick = self._mt5.symbol_info_tick(symbol)
         if tick is None:
             raise RuntimeError(f"获取 {symbol} 报价失败")
-        return tick.ask
+        if side == "buy":
+            return tick.ask
+        else:
+            return tick.bid

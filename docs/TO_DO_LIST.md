@@ -17,24 +17,24 @@
 ### Sprint 1：打通自动交易循环
 
 ```
-[ ] 1.0  修复 blocking bugs
+[ ] v0.5.1  修复 blocking bugs
           ├─ [ ] signals.py:98  — min_hold 死代码修复（回测中 min_hold 约束不可靠）
           ├─ [ ] order_manager.py:90 — Broker 私有方法调用改为公共接口
           └─ [ ] broker.py:216  — get_symbol_price bid/ask 方向修复（实盘影响，模拟盘可后做）
 
-[ ] 1.1  编写模拟盘启动脚本 scripts/run_simulation.py
+[ ] v0.5.2  编写模拟盘启动脚本 scripts/run_simulation.py
           ├─ daily_inference 生成信号
           ├─ Broker(simulate=True) 执行开/平仓
           ├─ RiskManager 风控检查（杠杆/止损/每日次数）
           ├─ OrderManager 记录审计日志
           └─ 每日状态摘要输出到终端
 
-[ ] 1.2  确认 daily_inference 输出 → 执行层输入的数据契约对齐
+[ ] v0.5.2  确认 daily_inference 输出 → 执行层输入的数据契约对齐
           ├─ entry_signal 格式转换为 OrderManager.place_market 调用
           ├─ exit_signal → close_position / close_all
           └─ 增量运行（不清除历史持仓，仅处理新信号）
 
-[ ] 1.3  设置 Windows 定时任务（每天收盘后运行）
+[ ] v0.5.4  设置 Windows 定时任务（每天收盘后运行）
           ├─ python scripts/run_simulation.py
           └─ 输出日志到 data/simulation_log/
 
@@ -44,20 +44,23 @@
   ✅ 模拟账户权益曲线可追踪
 ```
 
+发版v0.6.0
+
+
 ### Sprint 2：模拟盘监控（第 2 周）
 
 ```
-[ ] 2.0  每日摘要输出（日志 + 简单表格）
+[ ] v0.6.1  每日摘要输出（日志 + 简单表格）
           ├─ 当前持仓（ticker, 方向, 盈亏, 持有天数）
           ├─ 账户权益曲线
           └─ 风控触发记录（如有）
 
-[ ] 2.1  模拟盘 vs 回测偏差分析
+[ ] v0.6.2  模拟盘 vs 回测偏差分析
           ├─ 费率偏差（实际 slippage 是否在 0.05% 以内）
           ├─ 成交率（是否所有信号都成功执行）
           └─ 收益偏差原因分类
 
-[ ] 2.2  每周自动生成模拟报告
+[ ] v0.6.3  每周自动生成模拟报告
           ├─ 持仓变化图
           ├─ 胜率/盈亏比
           └─ 与 SPY 基准对比

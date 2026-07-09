@@ -97,18 +97,17 @@ def generate_entry_signals(
 
 def generate_exit_signals(
     entries: pd.DataFrame,
-    min_hold: int = 5,
     max_hold: int = 30,
 ) -> pd.DataFrame:
     """
     基于最大持仓期限生成出场信号。
 
-    每个入场的强制出场点 = max_hold 天之后。
-    min_hold 为最小持有天数，由执行层保证不提前出场。
+    每个入场的强制出场点 = entry_date + max_hold 天之后。
+    min_hold 由执行层保证不提前出场（不在本函数中处理）。
 
-    修复说明 v0.5.0:
-      旧逻辑在 min_hold 和 max_hold 同时设 exit=True，
-      导致 max_hold 强制出场永远未生效。
+    注意 v0.5.1:
+      旧逻辑的 min_hold 参数从未在函数体中使用，已移除。
+      回测中 min_hold 约束由执行层强制执行。
     """
     exits = pd.DataFrame(False, index=entries.index, columns=entries.columns)
 
@@ -123,7 +122,7 @@ def generate_exit_signals(
     n_exits = exits.sum().sum()
     logger.info(
         f"📉 出场信号生成: {n_exits} 笔出场 "
-        f"(min_hold={min_hold}, max_hold={max_hold})"
+        f"(max_hold={max_hold})"
     )
     return exits
 

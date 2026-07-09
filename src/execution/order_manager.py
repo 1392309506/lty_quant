@@ -73,7 +73,7 @@ class OrderManager:
         -------
         dict : {"ticket", "symbol", "side", "volume", "price", "status"}
         """
-        price = self.broker.get_symbol_price(symbol)
+        price = self.broker.get_symbol_price(symbol, side)
         timestamp = datetime.now()
 
         result = {
@@ -89,7 +89,7 @@ class OrderManager:
 
         try:
             if self.broker.simulate:
-                fill = self.broker._sim_fill_order(symbol, side, volume, price)
+                fill = self.broker.fill_order(symbol, side, volume, price)
                 result["ticket"] = fill["ticket"]
             else:
                 import MetaTrader5 as mt5
@@ -153,7 +153,9 @@ class OrderManager:
             return {"ticket": ticket, "status": "not_found"}
 
         pos = target.iloc[0]
-        price = self.broker.get_symbol_price(pos["symbol"])
+        # 平仓方向：买仓平仓=卖（bid），卖仓平仓=买（ask）
+        close_side = "sell" if pos["type"] == "buy" else "buy"
+        price = self.broker.get_symbol_price(pos["symbol"], close_side)
         timestamp = datetime.now()
 
         result = {
@@ -169,7 +171,7 @@ class OrderManager:
 
         try:
             if self.broker.simulate:
-                fill = self.broker._sim_close_position(ticket, price)
+                fill = self.broker.close_position(ticket, price)
                 result["pnl"] = fill["pnl"]
             else:
                 import MetaTrader5 as mt5

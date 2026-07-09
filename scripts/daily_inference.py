@@ -241,7 +241,7 @@ def main():
     if not args.no_regime and "SPY" in closes.columns:
         entries = filter_by_market_regime(entries, closes["SPY"], ma_window=200)
 
-    exits = generate_exit_signals(entries, min_hold=2, max_hold=30)
+    exits = generate_exit_signals(entries, max_hold=30)
 
     # 6. 统计
     n_entries = entries.sum().sum()

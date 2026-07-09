@@ -262,7 +262,6 @@ def run_full_backtest(
 
     exits = generate_exit_signals(
         entries,
-        min_hold=bt_config.get("min_hold", 5),
         max_hold=bt_config.get("max_hold", 30),
     )
 

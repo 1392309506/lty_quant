@@ -1,5 +1,32 @@
 # Changelog
 
+## [v0.6.0] - 2026-07-09
+
+### Added
+
+- **模拟盘启动脚本**: `scripts/run_simulation.py` — 自动交易循环：
+  - daily_inference 信号生成 → Broker(simulate=True) 开/平仓 → RiskManager 风控 → OrderManager 审计日志 → 状态持久化
+- **Broker 价格缓存**: `_sim_latest_prices` — 模拟模式使用真实行情定价，不再回退到 100.0 占位价
+- **有效风控**: 仓位计算自动受限于单笔风险上限（2%/8% = 25% equity），浮点边界 epsilon 保护
+- **Windows 编码兼容**: `src/__init__.py` 自动接管 stdout/stderr UTF-8，无需 `PYTHONIOENCODING`
+
+### Fixed
+
+- **signals.py**: 移除 `generate_exit_signals` 中从未使用的 `min_hold` 参数（回测中 min_hold 约束由执行层保证）
+- **broker.py**: `get_symbol_price` 新增 `side` 参数，实盘模式买单用 ask、卖单用 bid
+- **order_manager.py**: Broker 私有方法 `_sim_fill_order` / `_sim_close_position` 改为公共接口调用
+- **risk.py**: 浮点比较 `max_loss/equity > max_loss_per_trade_pct` 增加 `1e-10` epsilon 防边界误拒
+
+### Docs
+
+- **TO_DO_LIST.md**: 新增 — 模拟盘最小链路 Sprint 计划与并行改造任务
+- **审查报告.md**: 新增 — 全面代码审查与阶段评估
+- **使用指南.md**: 全面重写 — 分类命令、删除 Jupyter、补充模拟盘与执行层说明
+- **交易逻辑说明.md**: 修复因子分类（MAX_DD_60 移至波动率类）
+- **README.md**: 版本更新至 v0.6.0，路线图同步
+
+---
+
 ## [v0.5.0] - 2026-07-06
 
 ### Added

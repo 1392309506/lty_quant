@@ -5,7 +5,7 @@ Quant Trading System — 自动化量化交易核心模块
 技术因子 + 横截面模型 + LightGBM 预测 + vectorbt 回测。
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 # ── Windows UTF-8 兼容 ───────────────────────────────────
 # 强制 stdout/stderr 使用 UTF-8，避免 GBK 下 emoji 输出乱码

@@ -7,6 +7,18 @@ Quant Trading System — 自动化量化交易核心模块
 
 __version__ = "0.5.0"
 
+# ── Windows UTF-8 兼容 ───────────────────────────────────
+# 强制 stdout/stderr 使用 UTF-8，避免 GBK 下 emoji 输出乱码
+import sys as _sys
+import io as _io
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(_sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "buffer") and not isinstance(_stream, _io.TextIOWrapper):
+        setattr(_sys, _stream_name, _io.TextIOWrapper(_stream.buffer, encoding="utf-8"))
+    elif _stream is not None and hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
+del _sys, _io, _stream_name, _stream
+
 # 数据层
 from src.data.fetcher import (
     fetch_all_data,

@@ -17,19 +17,19 @@
 ### Sprint 1：打通自动交易循环
 
 ```
-[ ] v0.5.1  修复 blocking bugs
-          ├─ [ ] signals.py:98  — min_hold 死代码修复（回测中 min_hold 约束不可靠）
-          ├─ [ ] order_manager.py:90 — Broker 私有方法调用改为公共接口
-          └─ [ ] broker.py:216  — get_symbol_price bid/ask 方向修复（实盘影响，模拟盘可后做）
+[x] v0.5.1  修复 blocking bugs
+          ├─ [x] signals.py:98  — min_hold 死代码修复（回测中 min_hold 约束不可靠）
+          ├─ [x] order_manager.py:90 — Broker 私有方法调用改为公共接口
+          └─ [x] broker.py:216  — get_symbol_price bid/ask 方向修复（实盘影响，模拟盘可后做）
 
-[ ] v0.5.2  编写模拟盘启动脚本 scripts/run_simulation.py
+[x] v0.5.2  编写模拟盘启动脚本 scripts/run_simulation.py
           ├─ daily_inference 生成信号
           ├─ Broker(simulate=True) 执行开/平仓
           ├─ RiskManager 风控检查（杠杆/止损/每日次数）
           ├─ OrderManager 记录审计日志
           └─ 每日状态摘要输出到终端
 
-[ ] v0.5.2  确认 daily_inference 输出 → 执行层输入的数据契约对齐
+[x] v0.5.2  确认 daily_inference 输出 → 执行层输入的数据契约对齐
           ├─ entry_signal 格式转换为 OrderManager.place_market 调用
           ├─ exit_signal → close_position / close_all
           └─ 增量运行（不清除历史持仓，仅处理新信号）

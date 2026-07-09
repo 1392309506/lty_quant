@@ -143,7 +143,7 @@ class RiskManager:
         # 5. 单笔风险检查（基于 stop_loss 或默认硬止损）
         sl_pct = order.get("stop_loss", self.config.hard_stop_loss_pct)
         max_loss = notional * sl_pct
-        if equity > 0 and max_loss / equity > self.config.max_loss_per_trade_pct:
+        if equity > 0 and max_loss / equity > self.config.max_loss_per_trade_pct + 1e-10:
             return False, (
                 f"单笔潜在亏损 {max_loss/equity:.2%} 超过上限 "
                 f"{self.config.max_loss_per_trade_pct:.0%}"

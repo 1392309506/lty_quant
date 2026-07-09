@@ -43,6 +43,7 @@ class Broker:
         }
         self._sim_positions: List[Dict] = []
         self._sim_ticket = 100000
+        self._sim_latest_prices: Dict[str, float] = {}
 
         if not simulate:
             self._connect_real()
@@ -213,6 +214,7 @@ class Broker:
         """模拟模式下，用最新价更新持仓的 price_current 和 profit。"""
         if not self.simulate:
             return
+        self._sim_latest_prices = prices  # 保存全局价格缓存
         for pos in self._sim_positions:
             if pos["symbol"] in prices:
                 pos["price_current"] = prices[pos["symbol"]]
@@ -242,7 +244,10 @@ class Broker:
             模拟模式下无 spread，buy/sell 返回相同值。
         """
         if self.simulate:
-            # 模拟模式应由调用方通过 update_sim_prices 注入价格
+            # 优先使用 update_sim_prices 注入的最新价
+            if symbol in self._sim_latest_prices:
+                return self._sim_latest_prices[symbol]
+            # 其次使用持仓价
             for pos in self._sim_positions:
                 if pos["symbol"] == symbol:
                     return pos["price_current"]

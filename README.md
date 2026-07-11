@@ -9,7 +9,7 @@
 ## 特性
 
 - **多后端数据采集**：yfinance（默认，数据全）+ Alpha Vantage（兜底，无需代理），统一缓存为 parquet。
-- **13 个技术因子**：动量（MOMO_20/60、MOM_RATIO）、均值回归（RSI_14、BB_POS、VOL_MA_RATIO）、波动率（ATR_20_NORM、VOLATILITY_20）、统计拓展（BB_WIDTH、HIGH_LOW_RATIO、ULCER_INDEX、MAX_DD_60）、资金流（CHAIKIN_MF），均为纯函数，可独立测试。
+- **9 个技术因子**：动量（MOMO_20/60、MOM_RATIO）、均值回归（RSI_14、VOL_MA_RATIO）、波动率（VOLATILITY_20、BB_WIDTH）、风险（MAX_DD_60）、资金流（CHAIKIN_MF），均为纯函数，可独立测试。
 - **因子探索**：持续因子寻找流程（factor_hunt.py），以 IC/ICIR/层组合单调性为筛选标准，当前已测试 28 个候选因子，发现 5 个有效因子。
 - **增量更新**：parquet 缓存，7 天内不重复下载。
 - **代理友好**：自动为 yfinance 注入 HTTP 代理（v2rayN/Clash）。
@@ -81,9 +81,9 @@ Quant/
 │   │   └── preprocess.py    #   训练数据准备 + Walk-Forward 窗口
 │   ├── factors/             # 因子计算（13 个纯函数因子）
 │   │   ├── momentum.py      #   MOMO_20, MOMO_60, MOM_RATIO
-│   │   ├── mean_reversion.py #  RSI_14, BB_POS, VOL_MA_RATIO
-│   │   ├── volatility.py    #   ATR_20, VOLATILITY_20
-│   │   ├── new_factors.py   #   BB_WIDTH, HIGH_LOW_RATIO, ULCER_INDEX, MAX_DD_60, CHAIKIN_MF
+│   │   ├── mean_reversion.py #  RSI_14, VOL_MA_RATIO
+│   │   ├── volatility.py    #   VOLATILITY_20
+│   │   ├── new_factors.py   #   BB_WIDTH, CHAIKIN_MF, MAX_DD_60
 │   │   ├── regime.py        #   market_regime_filter
 │   │   ├── assembly.py      #   因子组装器
 │   │   └── validation.py    #   因子质量检查
@@ -148,7 +148,7 @@ Quant/
                             │       ├─ mean_reversion.py       │
                             │       └─ volatility.py           │
                             └──────────┬───────────────────────┘
-                                       │ factor_panel (ticker×13因子)
+                                       │ factor_panel (ticker×9因子)
                                        ▼
                             ┌──────────────────────────────────┐
                             │   标签 & 预处理 (Stage 3)       │

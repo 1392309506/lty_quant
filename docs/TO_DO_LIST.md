@@ -91,7 +91,7 @@
 | P0 | 新一轮因子寻找 | 横截面动量、Beta 相对强弱 |
 | P1 | 通用 CLI （argparse 替代 sys.argv） | 覆盖 train_model.py 和 run_backtest.py |
 | P2 | backtest/config.py 添加 docstring | 与 models/config.py 对齐 |
-| P3 | 因子共线性修复 | VIF > 5 的因子组合并或剔除 |
+| P3 | 因子共线性修复 | ✅ 已完成：VIF>5 的 8 个因子中移除 4 个（BB_POS、ATR_20_NORM、HIGH_LOW_RATIO、ULCER_INDEX），保留 9 个核心因子 | 2h |
 
 ### 长期（Q4）
 

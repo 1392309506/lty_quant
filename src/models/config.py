@@ -5,27 +5,24 @@
 from typing import List
 
 # ===================================================================
-# 特征列（对应 13 个因子，各含 3 个变体 = 39 个特征）
+# 特征列（对应 9 个因子，各含 3 个变体 = 27 个特征）
 # ===================================================================
 FEATURE_COLS: List[str] = [
-    # 原始因子（13 个）
+    # 原始因子（9 个）
     "MOMO_20", "MOMO_60", "MOM_RATIO",
-    "RSI_14", "BB_POS", "VOL_MA_RATIO",
-    "ATR_20_NORM", "VOLATILITY_20",
-    "BB_WIDTH", "HIGH_LOW_RATIO",
-    "CHAIKIN_MF", "ULCER_INDEX", "MAX_DD_60",
+    "RSI_14", "VOL_MA_RATIO",
+    "VOLATILITY_20", "BB_WIDTH",
+    "CHAIKIN_MF", "MAX_DD_60",
     # 横截面排名
     "MOMO_20_rank", "MOMO_60_rank", "MOM_RATIO_rank",
-    "RSI_14_rank", "BB_POS_rank", "VOL_MA_RATIO_rank",
-    "ATR_20_NORM_rank", "VOLATILITY_20_rank",
-    "BB_WIDTH_rank", "HIGH_LOW_RATIO_rank",
-    "CHAIKIN_MF_rank", "ULCER_INDEX_rank", "MAX_DD_60_rank",
+    "RSI_14_rank", "VOL_MA_RATIO_rank",
+    "VOLATILITY_20_rank", "BB_WIDTH_rank",
+    "CHAIKIN_MF_rank", "MAX_DD_60_rank",
     # 横截面 Z-score
     "MOMO_20_zscore", "MOMO_60_zscore", "MOM_RATIO_zscore",
-    "RSI_14_zscore", "BB_POS_zscore", "VOL_MA_RATIO_zscore",
-    "ATR_20_NORM_zscore", "VOLATILITY_20_zscore",
-    "BB_WIDTH_zscore", "HIGH_LOW_RATIO_zscore",
-    "CHAIKIN_MF_zscore", "ULCER_INDEX_zscore", "MAX_DD_60_zscore",
+    "RSI_14_zscore", "VOL_MA_RATIO_zscore",
+    "VOLATILITY_20_zscore", "BB_WIDTH_zscore",
+    "CHAIKIN_MF_zscore", "MAX_DD_60_zscore",
 ]
 
 # ===================================================================
